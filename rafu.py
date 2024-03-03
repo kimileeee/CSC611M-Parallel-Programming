@@ -4,6 +4,7 @@ from urllib.parse import urljoin
 from multiprocessing import Process, Pipe
 import time
 import re
+import random
 
 def cfDecodeEmail(encodedString):
     r = int(encodedString[:2],16)
@@ -15,6 +16,7 @@ def getLinks(url):
     soup = BeautifulSoup(response.content, 'html.parser')
     links = soup.find_all('a')
 
+    base_url = "https://www.dlsu.edu.ph/"
     found_links = []
 
     for link in links:
@@ -22,7 +24,7 @@ def getLinks(url):
             if link['href'].find(".pdf") != -1:
                 continue
             else:
-                linkToScrape = urljoin(url, link['href'])
+                linkToScrape = urljoin(base_url, link['href'])
                 found_links.append(linkToScrape)
         else:
             continue
@@ -63,7 +65,14 @@ class LinkScraper(Process):
                 continue
 
             self.visited_list.append(curr_url)
-            found_links = getLinks(curr_url)
+            
+
+            try:
+                found_links = getLinks(curr_url)
+                self.url_list.extend(found_links)
+                random.shuffle(self.url_list)
+            except:
+                continue
 
             for link in found_links:
                 print(f"LinkScraper {self.ID} sent {link}")
@@ -83,11 +92,18 @@ class InfoScraper(Process):
         while not (eof):
             try:
                 link = self.consumer_pipe.recv()
-                scraped_emails = extractEmailsFromPage(link)
-                print(f"InfoScraper {self.ID} found something. Current email list: {self.info_list}")
-                self.info_list.extend(scraped_emails)
+
+                try:
+                    scraped_emails = extractEmailsFromPage(link)
+                except:
+                    continue
+
+                if scraped_emails not in self.info_list:
+                    self.info_list.extend(scraped_emails)
+                    print(f"InfoScraper {self.ID} found something. Current email list: {self.info_list}")
+
             except EOFError:
-                print('No more data to process. Exitiing')
+                print('No more data to process. Exiting')
                 eof = True 
         
 if __name__ == "__main__":
