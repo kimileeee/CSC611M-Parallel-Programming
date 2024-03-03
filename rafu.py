@@ -17,14 +17,15 @@ def getLinks(url):
     links = soup.find_all('a')
 
     base_url = "https://www.dlsu.edu.ph/"
+    pattern = re.compile(r'\.\w+$')
     found_links = []
 
     for link in links:
+        linkToScrape = urljoin(base_url, link['href'])
         if 'href' in link.attrs:
-            if link['href'].find(".pdf") != -1:
+            if pattern.search(link['href']) or linkToScrape.startswith("https://www.dlsu.edu.ph/cdn-cgi/l/email-protection#"):
                 continue
             else:
-                linkToScrape = urljoin(base_url, link['href'])
                 found_links.append(linkToScrape)
         else:
             continue
