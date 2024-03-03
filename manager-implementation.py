@@ -4,12 +4,14 @@ from urllib.parse import urljoin
 from multiprocessing import Process, Manager
 import time
 import re
-import random
 
 def cfDecodeEmail(encodedString):
     r = int(encodedString[:2],16)
     email = ''.join([chr(int(encodedString[i:i+2], 16) ^ r) for i in range(2, len(encodedString), 2)])
     return email
+
+def all_unique(lis):
+    return len(set(lis)) == len(lis)
 
 def getLinks(url):
     response = requests.get(url=url)
@@ -46,6 +48,9 @@ def extractEmailsFromPage(url):
 
     collected_emails.extend(unprotected_emails)
 
+    if len(collected_emails) != 0:
+        print(f"Email addresses collected from {url}: {collected_emails}")
+
     return collected_emails
 
 def extractEmailsFromLinks(url):
@@ -65,23 +70,29 @@ def extractEmailsFromLinks(url):
         else:
             continue
 
+    if len(emails) != 0:
+        print(f"Email address collected from links within {url}: {emails}")
+        
     return emails
 
 class LinkScraper(Process):
-    def __init__(self, ID, starting_point, url_list, visited_list):
+    def __init__(self, ID, starting_point, url_list, visited_list, completed_list, start_time, duration):
         Process.__init__(self)
         self.ID = ID
         self.starting_point = starting_point
         self.url_list = url_list
         self.visited_list = visited_list
+        self.completed_list = completed_list
+        self.start_time = start_time
+        self.duration = duration
     def run(self):
         self.url_list.append(self.starting_point)
 
-        while self.url_list:
+        while self.url_list and time.time() - self.start_time <= self.duration * 60:
             print("LinkScraper running")
             curr_url = self.url_list.pop(0)
 
-            if curr_url in self.visited_list or curr_url in self.url_list:
+            if curr_url in self.visited_list or curr_url in self.url_list or curr_url in self.completed_list:
                 continue
 
             self.visited_list.append(curr_url)
@@ -90,27 +101,29 @@ class LinkScraper(Process):
                 found_links = getLinks(curr_url)
 
                 for link in found_links:
-                    if link not in self.visited_list and link not in self.url_list and "https://www.dlsu.edu.ph/" in link:
+                    if link not in self.visited_list and link not in self.completed_list and link not in self.url_list and "https://www.dlsu.edu.ph/" in link:
                         self.url_list.append(link)
                         print(f"LinkScraper {self.ID} added {link}")
-                
-                random.shuffle(self.url_list)
 
             except:
                 print("Error encountered, info scraping skipped")
                 continue
 
 class InfoScraper(Process):
-    def __init__(self, ID, url_list, info_list):
+    def __init__(self, ID, visited_list, completed_list, info_list, start_time, duration):
         Process.__init__(self)
         self.ID = ID
-        self.url_list = url_list
+        self.visited_list = visited_list
+        self.completed_list = completed_list
         self.info_list = info_list
+        self.start_time = start_time
+        self.duration = duration
     def run(self):
 
-        while self.url_list:
+        while self.visited_list and time.time() - self.start_time <= self.duration * 60:
             print(f"InfoScraper {self.ID} running")
-            curr_link = self.url_list.pop(0)
+            curr_link = self.visited_list.pop(0)
+            self.completed_list.append(curr_link)
 
             try:
                 scraped_emails = extractEmailsFromPage(curr_link)
@@ -127,34 +140,49 @@ class InfoScraper(Process):
         print(f"InfoScraper {self.ID} has finished scraping")
 
 if __name__ == "__main__":
-    start_time = time.time()
-
+    # starting_url = input("Enter starting point for web scraping:\n")
     starting_url = "https://www.dlsu.edu.ph"
+
+    duration = input("Enter web scraping duration (in minutes):\n")
+    duration = int(duration)
+
+    link_scraper_count = input("Enter number of processes to allocate for link scraping:\n")
+    link_scraper_count = int(link_scraper_count)
+
+    info_scraper_count = input("Enter number of processes to allocate for info scraping: \n")
+    info_scraper_count = int(info_scraper_count)
+
     manager = Manager()
     url_list = manager.list()
     visited_list = manager.list()
+    completed_list = manager.list()
     info_list = manager.list()
     processes = []
+    
+    start_time = time.time()
 
-    link_scraper = LinkScraper(0, starting_url, url_list, visited_list)
-    link_scraper.start()
-    processes.append(link_scraper)
+    for i in range(link_scraper_count):
+        link_scraper = LinkScraper(i, starting_url, url_list, visited_list, completed_list, start_time, duration)
+        link_scraper.start()
+        processes.append(link_scraper)
     
     print("Sleeping for 5 seconds to initiate link scraper")
     time.sleep(5)
 
-    for i in range(3):
-        info_scraper = InfoScraper(i, url_list, info_list)
+    for i in range(info_scraper_count):
+        info_scraper = InfoScraper(i, visited_list, completed_list, info_list, start_time, duration)
         info_scraper.start()
         processes.append(info_scraper)
 
     for p in processes:
         p.join()
 
-
-    print(f"Number of pages scraped: {len(visited_list)}")
-    print(f"Number of email addresses found: {len(info_list)}")
-
     end_time = time.time()
     execution_time = end_time - start_time
-    print(f"Execution time: {execution_time:.2f} seconds")
+
+    print(f"Execution time: {execution_time:2.2f}")
+
+    print(f"Number of pages scraped: {len(completed_list)}")
+    print(f"Were all pages scraped unique? {all_unique(completed_list)}")
+    print(f"Number of email addresses found: {len(info_list)}")
+    print(f"Were all email addresses scraped unique? {all_unique(info_list)}")
