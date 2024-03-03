@@ -1,13 +1,17 @@
-from web_scraper import scrape, write_to_csv
-import time
+# from web_scraper import scrape, write_to_csv
+# from web_scraper_parallel import scrape, write_to_csv
+import web_scraper
+import web_scraper_parallel
 
 def test01(base_url):
     print(f"Testing scraper for 1 minute without parallelization")
-    scraped_data = scrape(base_url, 60, 4)      # url, scraping_time, num_processes
-    write_to_csv(scraped_data)
+    scraped_data = web_scraper.scrape(base_url, 60, 4)      # url, scraping_time, num_processes
+    web_scraper.write_to_csv(scraped_data)
 
-def test02(base_url, max_links):
-    pass
+def test02(base_url):
+    print(f"Testing scraper for 1 minute with parallelization")
+    scraped_data = web_scraper_parallel.scrape(base_url, 60, 4)      # url, scraping_time, num_processes
+    web_scraper_parallel.write_to_csv(scraped_data)
 
 
 if __name__ == "__main__":
@@ -16,5 +20,5 @@ if __name__ == "__main__":
     # base_url = "https://www.dlsu.edu.ph/colleges/ccs/faculty-profile/"
     # base_url = "https://www.dlsu.edu.ph/colleges/cla/office-of-the-dean/"
 
-    test01(base_url) # web_scraper.py
-    # test02(base_url, max_links) # web_scraper_parallel.py
+    test01(base_url)      # web_scraper.py
+    test02(base_url)        # web_scraper_parallel.py
