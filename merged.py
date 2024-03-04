@@ -231,6 +231,9 @@ class InfoScraper(Process):
                 print(f"Error encountered, info scraping will be interrupted")
                 continue
 
+            if curr_link in self.visited_list or curr_link in self.completed_list:
+                continue
+
             self.completed_list.append(curr_link)
 
             try:
@@ -275,9 +278,6 @@ if __name__ == "__main__":
         link_scraper = LinkScraper(i, starting_url, url_list, visited_list, completed_list, start_time, duration)
         link_scraper.start()
         processes.append(link_scraper)
-    
-    print("Sleeping for 5 seconds to initiate link scraper")
-    time.sleep(5)
 
     for i in range(info_scraper_count):
         info_scraper = InfoScraper(i, visited_list, completed_list, info_list, start_time, duration)
@@ -287,11 +287,10 @@ if __name__ == "__main__":
     for p in processes:
         p.join()
 
-    writeEmailsToCSV(info_list)
-
     end_time = time.time()
     execution_time = end_time - start_time
 
+    writeEmailsToCSV(info_list)
     writeStatisticsToTXT(completed_list, info_list, start_time, end_time, execution_time, starting_url, link_scraper_count, info_scraper_count)
 
     print(f"Execution time: {execution_time:2.2f}")
