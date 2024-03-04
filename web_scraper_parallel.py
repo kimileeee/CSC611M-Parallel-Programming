@@ -1,12 +1,10 @@
 import requests
 from urllib.parse import urlparse, urljoin
 from bs4 import BeautifulSoup
-import re
-import csv
-from datetime import datetime
 import time
-import os
 from utils import decode_email, write_to_csv, get_input, find_preceding_label, is_valid_domain, is_content_link
+from multiprocessing import Process, Manager, Queue
+
 
 def get_soup(url):
     """
@@ -77,38 +75,42 @@ def fetch_emails_and_names(soup, existing_emails):
 
     return scraped_data
 
+def worker_process(url_queue, visited_urls, emails_data, base_url, start_time, scraping_time):
+    while not url_queue.empty() and (time.time() < start_time + scraping_time):
+        current_url = url_queue.get()  # Get URL from the queue
+        if current_url not in visited_urls:
+            print(f"Visiting: {current_url}")
+            visited_urls.append(current_url)
+            soup = get_soup(current_url)
+            if soup:
+                emails_and_texts = fetch_emails_and_names(soup, emails_data.keys())
+                for name, email in emails_and_texts:
+                    emails_data[email] = (name, current_url)    # Add email, name, and url to the dictionary
+                for link in get_all_links(soup, base_url):
+                    if link not in visited_urls:
+                        url_queue.put(link)  # Add new URL to the queue
+
 
 def scrape(base_url="https://dlsu.edu.ph", scraping_time=60, num_processes=4):
-    """
-    Data being accessed and modified:
-        urls_to_visit, visited_urls, emails_data
+    start_time = time.time()
+    manager = Manager()
 
-    For statistics:
-        url = base_url
-        number of pages scraped = len(visited_urls)
-        number of email addresses found = len(emails_data)   *Note: make sure emails are unique
-    """
-    start_time = time.time()  # Record the start time
+    # Shared data structures
+    urls_to_visit = manager.Queue()
+    urls_to_visit.put(base_url)  # Start with the base URL
+    visited_urls = manager.list()
+    emails_data = manager.dict()
 
-    urls_to_visit = {base_url}
-    visited_urls = set()
-    emails_data = {}
+    # Create worker processes and start them
+    processes = []
+    for _ in range(num_processes):
+        p = Process(target=worker_process, args=(urls_to_visit, visited_urls, emails_data, base_url, start_time, scraping_time))
+        processes.append(p)
+        p.start()
 
-    while urls_to_visit and (time.time() < start_time + scraping_time):
-        current_url = urls_to_visit.pop()                                   # Getting the last URL from the urls_to_visit set
-       
-        print(f"Visiting: {current_url}")
-        visited_urls.add(current_url)                                       # Writing to the visited_urls set
-
-        soup = get_soup(current_url)
-        if soup:
-            emails_and_texts = fetch_emails_and_names(soup, emails_data.keys())                 # Fetches emails and their corresponding texts/names
-            for name, email in emails_and_texts:
-                emails_data[email] = (name, current_url)                                   # Writing to emails_data list
-
-        for link in get_all_links(get_soup(current_url), base_url):
-            if link not in visited_urls:                                    # Accessing visited_urls set
-                urls_to_visit.add(link)                                     # Writing to the urls_to_visit set
+    # Join processes
+    for p in processes:
+        p.join()
 
     print("-----------------------------------")
     print(f"Started scraping at {time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(start_time))}")
@@ -116,7 +118,7 @@ def scrape(base_url="https://dlsu.edu.ph", scraping_time=60, num_processes=4):
     print(f"URL: {base_url}")
     print(f"Scraped {len(visited_urls)} pages and found {len(emails_data)} emails.\n")
     
-    return emails_data
+    return dict(emails_data)  # Convert Manager dict back to regular dict for further use
 
 if __name__ == "__main__":
     # INPUT
