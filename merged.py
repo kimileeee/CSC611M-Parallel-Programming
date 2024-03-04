@@ -7,6 +7,7 @@ import re
 import os
 import csv
 from datetime import datetime
+import random
 
 def cfDecodeEmail(encodedString):
     r = int(encodedString[:2],16)
@@ -156,7 +157,7 @@ def writeStatisticsToTXT(completed_list, info_list, start_time, end_time, execut
         file.write("\n")
         file.write(f"Start time: {datetime.fromtimestamp(start_time)}\n")
         file.write(f"End time: {datetime.fromtimestamp(end_time)}\n")
-        file.write(f"Execution time: {datetime.fromtimestamp(execution_time).strftime('%H:%M:%S')}\n")
+        file.write(f"Execution time: {datetime.fromtimestamp(execution_time).strftime('%M:%S')}\n")
         file.write(f"Number of processes allocated for link scraping: {link_scraper_count}\n")
         file.write(f"Number of processes allocated for info scraping: {info_scraper_count}\n")
 
@@ -173,9 +174,19 @@ class LinkScraper(Process):
     def run(self):
         self.url_list.append(self.starting_point)
 
-        while self.url_list and time.time() - self.start_time <= self.duration * 60:
-            print("LinkScraper running")
-            curr_url = self.url_list.pop(0)
+        while time.time() - self.start_time <= self.duration * 60:
+            print(f"LinkScraper {self.ID} running")
+
+            try:
+                curr_url = self.url_list.pop(0)
+            except IndexError:
+                time_delay = random.uniform(0.1, 0.5)
+                print(f"URL list is empty, link scraping will be interrupted for {time_delay} seconds")
+                time.sleep(time_delay)
+                continue
+            except:
+                print(f"Error encountered, link scraping will be interrupted")
+                continue
 
             if curr_url in self.visited_list or curr_url in self.url_list or curr_url in self.completed_list:
                 continue
@@ -189,10 +200,11 @@ class LinkScraper(Process):
                     if link not in self.visited_list and link not in self.completed_list and link not in self.url_list and "https://www.dlsu.edu.ph/" in link:
                         self.url_list.append(link)
                         print(f"LinkScraper {self.ID} added {link}")
-
             except:
-                print("Error encountered, info scraping skipped")
+                print("Error encountered, link scraping skipped")
                 continue
+
+        print(f"LinkScraper {self.ID} has finished link scraping")
 
 class InfoScraper(Process):
     def __init__(self, ID, visited_list, completed_list, info_list, start_time, duration):
@@ -205,9 +217,20 @@ class InfoScraper(Process):
         self.duration = duration
     def run(self):
 
-        while self.visited_list and time.time() - self.start_time <= self.duration * 60:
+        while time.time() - self.start_time <= self.duration * 60:
             print(f"InfoScraper {self.ID} running")
-            curr_link = self.visited_list.pop(0)
+
+            try:
+                curr_link = self.visited_list.pop(0)
+            except IndexError:
+                time_delay = random.uniform(0.5, 1)
+                print(f"Visited list is empty, info scraping will be interrupted for {time_delay} seconds")
+                time.sleep(time_delay)
+                continue
+            except:
+                print(f"Error encountered, info scraping will be interrupted")
+                continue
+
             self.completed_list.append(curr_link)
 
             try:
@@ -221,9 +244,10 @@ class InfoScraper(Process):
                         print(f"InfoScraper {self.ID} found something - current email list: {self.info_list}")
                     
             except:
+                print("Error encountered, info scraping skipped")
                 continue
         
-        print(f"InfoScraper {self.ID} has finished scraping")
+        print(f"InfoScraper {self.ID} has finished info scraping")
 
 if __name__ == "__main__":
     # starting_url = input("Enter starting point for web scraping:\n")
