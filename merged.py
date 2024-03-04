@@ -279,6 +279,9 @@ if __name__ == "__main__":
         link_scraper.start()
         processes.append(link_scraper)
 
+    print("Sleeping for 1 second to give link scrapers some time to generate initial links")
+    time.sleep(1)
+
     for i in range(info_scraper_count):
         info_scraper = InfoScraper(i, visited_list, completed_list, info_list, start_time, duration)
         info_scraper.start()
