@@ -76,14 +76,21 @@ def extractEmailsFromPage(url):
         if text and text != "[email protected]":
             name = text
 
-        name = findPrecedingLabel(encoded_emails[i]) if not name else name
         encoded = encoded_emails[i]['data-cfemail']
         decoded = cfDecodeEmail(encoded)
+        if not name:
+            email_name = decoded.split('@')[0]
+            if "." in email_name:
+                first_name = email_name.split('.')[0].capitalize()
+                last_name = email_name.split('.')[-1].capitalize()
+                name = f"{first_name} {last_name}"
+            else:
+                name = "No name found"
         
         collected_emails.append([name, decoded])
 
     for email in unprotected_emails:
-        collected_emails.append(["No label found", email])
+        collected_emails.append(["No name found", email])
 
     if len(collected_emails) != 0:
         print(f"Email addresses collected from {url}: {collected_emails}")
@@ -107,8 +114,11 @@ def extractEmailsFromLinks(url):
             else:
                 encoded = link['href'].removeprefix("https://www.dlsu.edu.ph/cdn-cgi/l/email-protection#")
                 decoded = cfDecodeEmail(encoded)
+                name = "No name found"
                 text = link.get_text(strip=True)
-                name = findPrecedingLabel(link) if not text else text
+                if text and text != "[email protected]":
+                    name = text
+
                 collected_emails.append([name, decoded])
         else:
             continue
@@ -118,27 +128,13 @@ def extractEmailsFromLinks(url):
         
     return collected_emails
 
-def findPrecedingLabel(element):
-    """
-    Attempts to find a descriptive label for an element
-    """
-    # Attempt to find a preceding sibling or parent with text
-    for sibling in element.previous_siblings:
-        if sibling.string and sibling.string.strip():
-            return sibling.string.strip()
-    parent = element.find_parent()
-    if parent and parent.string and parent.string.strip():
-        return parent.string.strip()
-    # Fallback in case no descriptive label is found
-    return "No label found"
-
-def writeToCSV(info_list):
+def writeEmailsToCSV(info_list):
     """
     Writes the scraped data to a CSV file
     """
     os.makedirs("output", exist_ok=True)
     timestamp = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
-    filename = f"Output_{timestamp}.csv"
+    filename = f"EmailData_{timestamp}.csv"
     filepath = os.path.join("output", filename)
     with open(filepath, 'w', newline='', encoding='utf-8') as file:
         writer = csv.writer(file)
@@ -147,6 +143,22 @@ def writeToCSV(info_list):
             writer.writerow([name, email])
 
     print(f"Data written to {filepath}\n")
+
+def writeStatisticsToTXT(completed_list, info_list, start_time, end_time, execution_time, starting_url, link_scraper_count, info_scraper_count):
+    os.makedirs("output", exist_ok=True)
+    timestamp = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
+    filename = f"ScrapingStats_{timestamp}.txt"
+    filepath = os.path.join("output", filename)
+    with open(filepath, 'w', newline='', encoding='utf-8') as file:
+        file.write(f"Website scraped: {starting_url}\n")
+        file.write(f"Number of pages scraped: {len(completed_list)}\n")
+        file.write(f"Number of email addresses found: {len(info_list)}\n")
+        file.write("\n")
+        file.write(f"Start time: {datetime.fromtimestamp(start_time)}\n")
+        file.write(f"End time: {datetime.fromtimestamp(end_time)}\n")
+        file.write(f"Execution time: {datetime.fromtimestamp(execution_time).strftime('%H:%M:%S')}\n")
+        file.write(f"Number of processes allocated for link scraping: {link_scraper_count}\n")
+        file.write(f"Number of processes allocated for info scraping: {info_scraper_count}\n")
 
 class LinkScraper(Process):
     def __init__(self, ID, starting_point, url_list, visited_list, completed_list, start_time, duration):
@@ -251,10 +263,12 @@ if __name__ == "__main__":
     for p in processes:
         p.join()
 
-    writeToCSV(info_list)
+    writeEmailsToCSV(info_list)
 
     end_time = time.time()
     execution_time = end_time - start_time
+
+    writeStatisticsToTXT(completed_list, info_list, start_time, end_time, execution_time, starting_url, link_scraper_count, info_scraper_count)
 
     print(f"Execution time: {execution_time:2.2f}")
 
