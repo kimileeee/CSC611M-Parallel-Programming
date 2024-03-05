@@ -153,3 +153,5 @@ cython_debug/
 
 .csv
 .txt
+.DS_Store
+.DS_Store
