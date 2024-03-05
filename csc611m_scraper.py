@@ -10,11 +10,17 @@ from datetime import datetime
 import random
 
 def cfDecodeEmail(encodedString):
+    """
+    Decodes a protected email address
+    """
     r = int(encodedString[:2],16)
     email = ''.join([chr(int(encodedString[i:i+2], 16) ^ r) for i in range(2, len(encodedString), 2)])
     return email
 
-def all_unique(lis):
+def allUnique(lis):
+    """
+    Checks if all elements in a list are unique
+    """
     return len(set(lis)) == len(lis)
 
 def getSoup(url):
@@ -35,8 +41,9 @@ def getSoup(url):
     return None
 
 def getLinks(url):
-    # response = requests.get(url=url)
-    # soup = BeautifulSoup(response.content, 'html.parser')
+    """
+    Gets all the links from a page
+    """
     soup = getSoup(url)
     if soup is None:
         return []
@@ -60,8 +67,9 @@ def getLinks(url):
     return found_links
 
 def extractEmailsFromPage(url):
-    # response = requests.get(url)
-    # soup = BeautifulSoup(response.content, 'html.parser')
+    """
+    Extracts email addresses from a page
+    """
     soup = getSoup(url)
     if soup is None:
         return []
@@ -99,8 +107,9 @@ def extractEmailsFromPage(url):
     return collected_emails
 
 def extractEmailsFromLinks(url):
-    # response = requests.get(url)
-    # soup = BeautifulSoup(response.content, 'html.parser')
+    """
+    Extracts email addresses from links within a page
+    """
     soup = getSoup(url)
     if soup is None:
         return []
@@ -146,6 +155,9 @@ def writeEmailsToCSV(info_list):
     print(f"Data written to {filepath}\n")
 
 def writeStatisticsToTXT(completed_list, info_list, start_time, end_time, execution_time, starting_url, link_scraper_count, info_scraper_count):
+    """
+    Writes the web scraping statistics to a TXT file
+    """
     os.makedirs("output", exist_ok=True)
     timestamp = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
     filename = f"ScrapingStats_{timestamp}.txt"
@@ -299,6 +311,6 @@ if __name__ == "__main__":
     print(f"Execution time: {execution_time:2.2f}")
 
     print(f"Number of pages scraped: {len(completed_list)}")
-    print(f"Were all pages scraped unique? {all_unique(completed_list)}")
+    print(f"Were all pages scraped unique? {allUnique(completed_list)}")
     print(f"Number of email addresses found: {len(info_list)}")
-    print(f"Were all email addresses scraped unique? {all_unique(info_list)}")
+    print(f"Were all email addresses scraped unique? {allUnique(info_list)}")
