@@ -1,9 +1,0 @@
-Website scraped: https://www.dlsu.edu.ph
-Number of pages scraped: 250
-Number of email addresses found: 17
-
-Start time: 2024-03-04 19:53:17.160285
-End time: 2024-03-04 19:56:17.494880
-Execution time: 03:00
-Number of processes allocated for link scraping: 1
-Number of processes allocated for info scraping: 1
