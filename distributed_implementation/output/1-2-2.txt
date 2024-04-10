@@ -1,0 +1,10 @@
+Website scraped: https://www.dlsu.edu.ph
+Number of pages scraped: 67
+Page scraped unique? True
+Number of email addresses found: 10
+Email addresses unique? True
+Website scraped: https://www.dlsu.edu.ph
+Number of pages scraped: 63
+Page scraped unique? True
+Number of email addresses found: 8
+Email addresses unique? True
