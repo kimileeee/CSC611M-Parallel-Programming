@@ -25,7 +25,7 @@ def paramsCallback(ch, method, properties, body):
 def infoScraperCallback(ch, method, properties, body):
     global start_time, duration, info_list, scraped_urls
     
-    if duration - 2 <= time.time() - start_time:
+    if duration - 5 <= time.time() - start_time:
         print("Set duration reached, writing to output files and exiting")
         writeEmailsToCSV(info_list)
         writeStatisticsToTXT(scraped_urls, info_list)
