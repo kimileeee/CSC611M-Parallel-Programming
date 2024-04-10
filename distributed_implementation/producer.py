@@ -19,7 +19,8 @@ def sendParams():
     start_time = time.time()
     duration = input("Enter the duration for link scraping (in minutes): ")
     duration = int(duration) * 60
-    starting_url = "https://www.dlsu.edu.ph"
+    # starting_url = "https://www.dlsu.edu.ph"
+    starting_url = input("Enter web scraping starting point: ")
     params_message = [start_time, duration, starting_url]
 
     channel.basic_publish(exchange='logs', routing_key='', body=json.dumps(params_message))
