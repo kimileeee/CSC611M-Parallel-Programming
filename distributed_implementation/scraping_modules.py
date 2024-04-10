@@ -18,7 +18,8 @@ def allUnique(lis):
     """
     Checks if all elements in a list are unique
     """
-    return len(set(lis)) == len(lis)
+    hashable_lis = [tuple(x) if isinstance(x, list) else x for x in lis]
+    return len(set(hashable_lis)) == len(hashable_lis)
 
 def getSoup(url):
     """
@@ -99,7 +100,7 @@ def extractEmailsFromPage(url):
         collected_emails.append(["No name found", email])
 
     if len(collected_emails) != 0:
-        print(f"Email addresses collected from {url}: {collected_emails}")
+        print(f"Email addresses collected from {url}, will be verified")
 
     return collected_emails
 
@@ -131,7 +132,7 @@ def extractEmailsFromLinks(url):
             continue
 
     if len(collected_emails) != 0:
-        print(f"Email address collected from links within {url}: {collected_emails}")
+        print(f"Email address collected from links from {url}, will be verified")
         
     return collected_emails
 
@@ -140,32 +141,45 @@ def writeEmailsToCSV(info_list):
     Writes the scraped data to a CSV file
     """
     os.makedirs("output", exist_ok=True)
-    timestamp = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
+    timestamp = datetime.now().strftime("%Y-%m-%d_%H-%M")
     filename = f"EmailData_{timestamp}.csv"
     filepath = os.path.join("output", filename)
-    with open(filepath, 'w', newline='', encoding='utf-8') as file:
-        writer = csv.writer(file)
-        writer.writerow(['Name', 'Email'])
-        for email, name in info_list.items():
-            writer.writerow([name, email])
+    
+    if os.path.exists(filepath):
+        with open(filepath, 'a', newline='', encoding='utf-8') as file:
+            writer = csv.writer(file)
+            for email in info_list:
+                writer.writerow([email[0],email[1]])
+    else:
+        with open(filepath, 'w', newline='', encoding='utf-8') as file:
+            writer = csv.writer(file)
+            writer.writerow(['Name', 'Email'])
+            for email in info_list:
+                writer.writerow([email[0],email[1]])
 
     print(f"Data written to {filepath}\n")
 
-def writeStatisticsToTXT(completed_list, info_list, start_time, end_time, execution_time, starting_url, link_scraper_count, info_scraper_count):
+def writeStatisticsToTXT(scraped_urls, info_list):
     """
     Writes the web scraping statistics to a TXT file
     """
+    starting_url = "https://www.dlsu.edu.ph"
     os.makedirs("output", exist_ok=True)
-    timestamp = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
+    timestamp = datetime.now().strftime("%Y-%m-%d_%H-%M")
     filename = f"ScrapingStats_{timestamp}.txt"
     filepath = os.path.join("output", filename)
-    with open(filepath, 'w', newline='', encoding='utf-8') as file:
-        file.write(f"Website scraped: {starting_url}\n")
-        file.write(f"Number of pages scraped: {len(completed_list)}\n")
-        file.write(f"Number of email addresses found: {len(info_list)}\n")
-        file.write("\n")
-        file.write(f"Start time: {datetime.fromtimestamp(start_time)}\n")
-        file.write(f"End time: {datetime.fromtimestamp(end_time)}\n")
-        file.write(f"Execution time: {datetime.fromtimestamp(execution_time).strftime('%M:%S')}\n")
-        file.write(f"Number of processes allocated for link scraping: {link_scraper_count}\n")
-        file.write(f"Number of processes allocated for info scraping: {info_scraper_count}\n")
+
+    if os.path.exists(filepath):
+        with open(filepath, 'a', newline='', encoding='utf-8') as file:
+            file.write(f"Website scraped: {starting_url}\n")
+            file.write(f"Number of pages scraped: {len(scraped_urls)}\n")
+            file.write(f"Page scraped unique? {allUnique(scraped_urls)}\n")
+            file.write(f"Number of email addresses found: {len(info_list)}\n")
+            file.write(f"Email addresses unique? {allUnique(info_list)}\n")
+    else:
+        with open(filepath, 'w', newline='', encoding='utf-8') as file:
+            file.write(f"Website scraped: {starting_url}\n")
+            file.write(f"Number of pages scraped: {len(scraped_urls)}\n")
+            file.write(f"Page scraped unique? {allUnique(scraped_urls)}\n")
+            file.write(f"Number of email addresses found: {len(info_list)}\n")
+            file.write(f"Email addresses unique? {allUnique(info_list)}\n")

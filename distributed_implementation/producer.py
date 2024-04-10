@@ -4,22 +4,39 @@ import time
 import random
 from scraping_modules import getLinks
 
-credentials = pika.PlainCredentials('rabbituser','rabbit1234')
-parameters = pika.ConnectionParameters('<ip address>', 5672, '/', credentials)
-connection = pika.BlockingConnection(parameters)
-channel = connection.channel()
-channel.queue_declare(queue='url_queue')
+start_time = None
+duration = None
+starting_url = None
 
-if __name__ == "__main__":   
+def sendParams():
+    global start_time, duration, starting_url
+    credentials = pika.PlainCredentials('rabbituser','rabbit1234')
+    parameters = pika.ConnectionParameters('10.0.2.15', 5672, '/', credentials)
+    connection = pika.BlockingConnection(parameters)
+    channel = connection.channel()
+    channel.exchange_declare(exchange='logs', exchange_type='fanout')
+
+    start_time = time.time()
     duration = input("Enter the duration for link scraping (in minutes): ")
     duration = int(duration) * 60
     starting_url = "https://www.dlsu.edu.ph"
+    params_message = [start_time, duration, starting_url]
+
+    channel.basic_publish(exchange='logs', routing_key='', body=json.dumps(params_message))
+    connection.close()
+
+def sendLinks():
+    global start_time, duration, starting_url
+    credentials = pika.PlainCredentials('rabbituser','rabbit1234')
+    parameters = pika.ConnectionParameters('10.0.2.15', 5672, '/', credentials)
+    connection = pika.BlockingConnection(parameters)
+    channel = connection.channel()
+    channel.queue_declare(queue='url_queue')
 
     url_list = []
     visited_list = []
     to_scrape = []
-    
-    start_time = time.time()
+
     print("Starting Link Scraping")
     url_list.append(starting_url)
 
@@ -36,14 +53,17 @@ if __name__ == "__main__":
             print(f"Error encountered, link scraping will be interrupted")
             continue
 
-        if curr_url in visited_list:
+        if curr_url in visited_list and curr_url in url_list:
             continue
+
+        visited_list.append(curr_url)
 
         try:
             found_links = getLinks(curr_url)
 
             for link in found_links:
-                if link not in visited_list and "https://www.dlsu.edu.ph/" in link:
+                if link not in visited_list and link not in url_list and "https://www.dlsu.edu.ph/" in link:
+                    print(f"Added URL to list: {link}")
                     url_list.append(link)
                     to_scrape.append(link)
         except:
@@ -54,3 +74,7 @@ if __name__ == "__main__":
         to_scrape = []
 
     connection.close()
+
+if __name__ == "__main__":   
+    sendParams()
+    sendLinks()
